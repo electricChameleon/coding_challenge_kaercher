@@ -6,22 +6,42 @@ import RobotPathPlot from './components/RobotPathPlot.vue';
 </script>
 
 <template>
-  <header>
-    
-    <div class="wrapper">
-      <!-- <HelloWorld msg="You did it!" /> -->
-      <FileUpload/>
-    </div>
-  </header>
+  <div class="header">
+    <h1>Kärcher Coding Challenge</h1>
+  </div>
 
-  <main>
+  <div class="content">
     <RobotPathPlot />
-  </main>
+    <FileUpload/>
+  </div>
 </template>
 
 <style scoped>
-header {
+.header {
   line-height: 1.5;
+  background-color: white;
+  box-shadow: 0 8px 12px 0 rgba(0, 0, 0, 0.3);
+  position:fixed;
+  left:0;
+  top:0;
+  width:100vw;
+  z-index:200;
+  height:100px;
+  padding: 25px 40px;
+}
+
+.header h1 {
+  text-decoration: underline;
+  text-decoration-color: #ffed00;
+  text-transform: uppercase;
+  font-weight: 900;
+  font-style: normal;
+  color: #2b2b2b;
+  white-space: nowrap;
+}
+
+.content{
+  padding-top: 100px;
 }
 
 .logo {
@@ -29,21 +49,4 @@ header {
   margin: 0 auto 2rem;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
 </style>
