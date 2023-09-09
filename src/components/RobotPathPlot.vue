@@ -5,6 +5,7 @@ import { inject } from 'vue'
 
 const emitter = inject('emitter');
 const canvas = ref(null);
+const ctx = ref(null);
 const coordinates = ref([]);
 const robot = ref([]);
 const showRobot = ref(false);
@@ -13,15 +14,28 @@ const showCleanedArea = ref(false);
 emitter.on('pathParsed', (value) => {
     coordinates.value = [];
     Array.prototype.push.apply(coordinates.value, value);
-    var factor = calculateFactor();
+    
+    prepareCanvasForDrawing();
 
-    plotPath(factor);
+    var factor = calculateFactor();
+    drawRobotPath(factor);
 });
 
 emitter.on('robotParsed', (value) => {
     robot.value = [];
     Array.prototype.push.apply(robot.value, value);
 });
+
+
+onMounted(() => {
+    ctx.value = canvas.value.getContext('2d');
+})
+
+function prepareCanvasForDrawing()
+{
+    ctx.value.save();
+    ctx.value.translate(100, 50);
+}
 
 function calculateFactor() {
     var maxX = 0;
@@ -56,26 +70,22 @@ function calculateFactor() {
 }
 
 function visualizeCleanedPath(factor) {
-    var cleanedPath = canvas.value.getContext('2d');
-    cleanedPath.lineWidth = 0.66 * factor; // static number for width of cleaned path, should be dynamic
-    cleanedPath.strokeStyle = 'rgba(255,255,255,0.6)';
-    cleanedPath.beginPath();
+    ctx.value.lineWidth = 0.66 * factor; // static number for width of cleaned path, should be dynamic
+    ctx.value.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.value.beginPath();
 
     coordinates.value.forEach(coordinate => {
         var x = (coordinate[0]) * factor;
         var y = (coordinate[1]) * factor;
-        cleanedPath.lineTo(x, y);
+        ctx.value.lineTo(x, y);
     });
 
-    cleanedPath.stroke();
+    ctx.value.stroke();
 }
 
-function plotRobotPolygon(baseLink, factor) {
-    var robotPlot = canvas.value.getContext('2d');
-    robotPlot.lineWidth = 1.5;
-    robotPlot.strokeStyle = 'black';
-
-    robotPlot.beginPath();
+function drawRobotPolygon(baseLink, factor) {
+    ctx.value.lineWidth = 1.5;
+    ctx.value.strokeStyle = 'black';
 
     var x1 = baseLink[0] + robot.value[0][0] * factor;
     var x2 = baseLink[0] + robot.value[1][0] * factor;
@@ -86,52 +96,52 @@ function plotRobotPolygon(baseLink, factor) {
     var y3 = baseLink[1] + robot.value[2][1] * factor;
     var y4 = baseLink[1] + robot.value[3][1] * factor;
 
-    robotPlot.beginPath();
-    robotPlot.lineTo(x1, y1);
-    robotPlot.lineTo(x2, y2);
-    robotPlot.lineTo(x3, y3);
-    robotPlot.lineTo(x4, y4);
-    robotPlot.lineTo(x1, y1);
-    robotPlot.stroke();
+    ctx.value.beginPath();
+    ctx.value.lineTo(x1, y1);
+    ctx.value.lineTo(x2, y2);
+    ctx.value.lineTo(x3, y3);
+    ctx.value.lineTo(x4, y4);
+    ctx.value.lineTo(x1, y1);
+    ctx.value.stroke();
 }
 
-function plotPath(factor) {
-    var ctx = canvas.value.getContext('2d');
-    ctx.translate(100, 50);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'red';
+function drawRobotPath(factor) {
+    ctx.value.lineWidth = 1.5;
+    ctx.value.strokeStyle = 'red';
 
-    ctx.beginPath();
+    ctx.value.beginPath();
 
     coordinates.value.forEach(coordinate => {
         var x = (coordinate[0]) * factor;
         var y = (coordinate[1]) * factor;
-        ctx.lineTo(x, y);
+        ctx.value.lineTo(x, y);
     });
 
-    ctx.stroke();
+    ctx.value.stroke();
 }
 
 function redrawCanvas() {
+    var factor = calculateFactor();
+
     // clear the canvas for redrawing
-    const context = canvas.value.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.value.restore();
+    ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+    prepareCanvasForDrawing();
 
-    // Handle the logic based on switch state changes
-    if(showRobot.value)
-    {
-        var factor = calculateFactor();
-        var baseLine = [coordinates.value[0][0] * factor, coordinates.value[0][1] * factor];
-
-        plotRobotPolygon(baseLine, factor);
-    }
-
+    // Handle the logic based on switch state 
     if(showCleanedArea.value)
     {
-        var factor = calculateFactor();
-       
         visualizeCleanedPath(factor);
     }
+
+    if(showRobot.value)
+    {
+        var baseLink = [coordinates.value[0][0] * factor, coordinates.value[0][1] * factor];
+        drawRobotPolygon(baseLink, factor);
+    }
+
+    // Always draw the robot path again
+    drawRobotPath(factor);
 }
 </script> 
 <template>

@@ -39,7 +39,7 @@ import RobotPathPlot from './components/RobotPathPlot.vue';
 }
 
 .content{
-  padding-top: 100px;
+  padding-top: 150px;
 }
 
 .logo {
