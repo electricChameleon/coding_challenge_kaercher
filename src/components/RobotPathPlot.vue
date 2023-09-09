@@ -8,6 +8,7 @@ const canvas = ref(null);
 const ctx = ref(null);
 const coordinates = ref([]);
 const robot = ref([]);
+const factor = ref([]);
 const showRobot = ref(false);
 const showCleanedArea = ref(false);
 
@@ -15,10 +16,13 @@ emitter.on('pathParsed', (value) => {
     coordinates.value = [];
     Array.prototype.push.apply(coordinates.value, value);
     
-    prepareCanvasForDrawing();
+    // clear canvas
+    ctx.value.restore();
+    ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
 
-    var factor = calculateFactor();
-    drawRobotPath(factor);
+    transformCoordinates();
+    prepareCanvasForDrawing();
+    drawRobotPath();
 });
 
 emitter.on('robotParsed', (value) => {
@@ -33,11 +37,38 @@ onMounted(() => {
 
 function prepareCanvasForDrawing()
 {
+    // save the unchanged canvas for redrawing
     ctx.value.save();
-    ctx.value.translate(100, 50);
+
+    // calculate how to translate the canvas so that everything fits in
+    var maxX = 0;
+    var maxY = 0;
+    var minX = 0;
+    var minY = 0;
+
+    coordinates.value.forEach(coordinate => {
+        if (coordinate[0] > maxX) {
+            maxX = coordinate[0]
+        }
+        if (coordinate[1] > maxY) {
+            maxY = coordinate[1]
+        }
+        if (coordinate[0] < minX) {
+            minX = coordinate[0]
+        }
+        if (coordinate[1] < minY) {
+            minY = coordinate[1]
+        }
+    });
+
+    // super high quality math skills
+    var transX = (maxX + minX) / 2 * (-1) + canvas.value.width / 2;
+    var transY = (maxY + minY) / 2 * (-1) + canvas.value.height / 2;
+
+    ctx.value.translate(transX, transY);
 }
 
-function calculateFactor() {
+function transformCoordinates() {
     var maxX = 0;
     var maxY = 0;
     var minX = 0;
@@ -65,36 +96,42 @@ function calculateFactor() {
     var factorX = (canvas.value.width - 100) / lengthX;
     var factorY = (canvas.value.height - 100) / lengthY;
 
-    var factor = Math.min(factorX, factorY);
-    return factor;
+    var _factor = Math.min(factorX, factorY);
+    factor.value =  _factor;
+
+    // transform the coordinates
+    coordinates.value.forEach(coordinate => {
+        coordinate[0] = (coordinate[0]) * _factor;
+        coordinate[1] = (coordinate[1]) * _factor;
+    });
 }
 
-function visualizeCleanedPath(factor) {
-    ctx.value.lineWidth = 0.66 * factor; // static number for width of cleaned path, should be dynamic
+function visualizeCleanedPath() {
+    ctx.value.lineWidth = 0.66 * factor.value; // static number for width of cleaned path, should be dynamic
     ctx.value.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.value.beginPath();
 
     coordinates.value.forEach(coordinate => {
-        var x = (coordinate[0]) * factor;
-        var y = (coordinate[1]) * factor;
+        var x = (coordinate[0]);
+        var y = (coordinate[1]);
         ctx.value.lineTo(x, y);
     });
 
     ctx.value.stroke();
 }
 
-function drawRobotPolygon(baseLink, factor) {
+function drawRobotPolygon(baseLink) {
     ctx.value.lineWidth = 1.5;
     ctx.value.strokeStyle = 'black';
 
-    var x1 = baseLink[0] + robot.value[0][0] * factor;
-    var x2 = baseLink[0] + robot.value[1][0] * factor;
-    var x3 = baseLink[0] + robot.value[2][0] * factor;
-    var x4 = baseLink[0] + robot.value[3][0] * factor;
-    var y1 = baseLink[1] + robot.value[0][1] * factor;
-    var y2 = baseLink[1] + robot.value[1][1] * factor;
-    var y3 = baseLink[1] + robot.value[2][1] * factor;
-    var y4 = baseLink[1] + robot.value[3][1] * factor;
+    var x1 = baseLink[0] + robot.value[0][0] * factor.value;
+    var x2 = baseLink[0] + robot.value[1][0] * factor.value;
+    var x3 = baseLink[0] + robot.value[2][0] * factor.value;
+    var x4 = baseLink[0] + robot.value[3][0] * factor.value;
+    var y1 = baseLink[1] + robot.value[0][1] * factor.value;
+    var y2 = baseLink[1] + robot.value[1][1] * factor.value;
+    var y3 = baseLink[1] + robot.value[2][1] * factor.value;
+    var y4 = baseLink[1] + robot.value[3][1] * factor.value;
 
     ctx.value.beginPath();
     ctx.value.lineTo(x1, y1);
@@ -105,15 +142,15 @@ function drawRobotPolygon(baseLink, factor) {
     ctx.value.stroke();
 }
 
-function drawRobotPath(factor) {
+function drawRobotPath() {
     ctx.value.lineWidth = 1.5;
     ctx.value.strokeStyle = 'red';
 
     ctx.value.beginPath();
 
     coordinates.value.forEach(coordinate => {
-        var x = (coordinate[0]) * factor;
-        var y = (coordinate[1]) * factor;
+        var x = coordinate[0];
+        var y = coordinate[1];
         ctx.value.lineTo(x, y);
     });
 
@@ -121,8 +158,6 @@ function drawRobotPath(factor) {
 }
 
 function redrawCanvas() {
-    var factor = calculateFactor();
-
     // clear the canvas for redrawing
     ctx.value.restore();
     ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
@@ -131,19 +166,20 @@ function redrawCanvas() {
     // Handle the logic based on switch state 
     if(showCleanedArea.value)
     {
-        visualizeCleanedPath(factor);
+        visualizeCleanedPath();
     }
 
     if(showRobot.value)
     {
-        var baseLink = [coordinates.value[0][0] * factor, coordinates.value[0][1] * factor];
-        drawRobotPolygon(baseLink, factor);
+        var baseLink = [coordinates.value[0][0], coordinates.value[0][1]];
+        drawRobotPolygon(baseLink);
     }
 
     // Always draw the robot path again
-    drawRobotPath(factor);
+    drawRobotPath();
 }
 </script> 
+
 <template>
     <div class="container">
         <div class="canvas-container">
@@ -161,7 +197,7 @@ function redrawCanvas() {
                     <input type="checkbox" v-model="showRobot" @change="redrawCanvas" />
                     <span class="slider round"></span>
                 </label>
-                <span class="switch-desc">Display robot (BETA)</span>
+                <span class="switch-desc">Display robot starting position (BETA)</span>
             </div>
             <div>
                 <label class="switch">
